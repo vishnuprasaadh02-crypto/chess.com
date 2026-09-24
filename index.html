@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Checkmate Nexus — Real-Time Live Multiplayer Chess & AI</title>
+  <meta name="description" content="Experience real-time grandmaster chess with live rooms, clocks, instant move synchronization, AI bots (Easy, Medium, Hard), and responsive multiplayer.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Socket.IO Client Library -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-board-theme="neo-wood">
+  <div id="app">
+    <!-- Top Global Navigation Bar -->
+    <header class="navbar">
+      <a href="#play" class="brand" id="brandLogo">
+        <div class="brand-icon">♔</div>
+        <div class="brand-meta">
+          <div class="brand-name">CHECKMATE NEXUS</div>
+        </div>
+        <span class="brand-tag">LIVE</span>
+      </a>
+
+      <div class="nav-center">
+        <!-- Live Connection Status Indicator -->
+        <div class="nav-status-badge" id="navConnectionStatus" title="Socket.IO Connection Status">
+          <span class="dot"></span>
+          <span class="status-label" id="connectionStatusText">● LIVE</span>
+          <span class="ping-indicator" id="pingValue">24ms</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <button class="btn-icon" id="btnServerConfig" title="Backend Server Settings">⚙️</button>
+        <button class="btn-icon" id="btnSoundToggle" title="Sound Effects">🔊</button>
+        
+        <!-- Player Profile / Login Trigger -->
+        <div class="user-profile-badge" id="userProfileBtn" title="Click to change your player name or log in">
+          <div class="user-avatar-sm" id="userAvatar">?</div>
+          <span class="user-name-text" id="headerUserName">Login to Play</span>
+          <span class="user-rating-pill" id="headerUserRating">1500</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Global Connection Banner -->
+    <div id="connectionBanner" style="display:none; padding: 0.5rem 1rem; text-align: center; font-size: 0.85rem; font-weight: 700;"></div>
+
+    <!-- Main View Switcher Container -->
+    <main class="view-container">
+      
+      <!-- ==========================================
+           1. PLAY / LOBBY PAGE (#play)
+           ========================================== -->
+      <section class="view-page active" id="viewPlay">
+        <div class="play-view-wrapper">
+          <div class="hero-section">
+            <div class="hero-content">
+              <h1 class="hero-title">
+                Play Live Chess <br>
+                <span class="gradient-text" id="heroWelcomeName">Multiplayer & AI</span>
+              </h1>
+              <p class="hero-subtitle">
+                Create a live room, share a private link or room ID with a friend, or challenge our built-in Smart AI bots (Easy, Medium, Hard) anytime!
+              </p>
+              <div class="hero-cta-group">
+                <button class="btn-primary-glow" id="btnOpenCreateGame">
+                  <span>⚡</span> CREATE LIVE ROOM
+                </button>
+                <button class="btn-primary-glow" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color:#fff; box-shadow: 0 8px 25px rgba(6,182,212,0.4);" id="btnOpenPlayAi">
+                  <span>🤖</span> PLAY VS AI
+                </button>
+                <button class="btn-secondary-glass" id="btnOpenJoinModal">
+                  <span>🔑</span> JOIN WITH ROOM ID
+                </button>
+              </div>
+            </div>
+
+            <div class="hero-art-card">
+              <div class="art-chess-crown">♚</div>
+              <div class="art-badge-strip">
+                <div class="art-badge"><span>⚡</span> Live Sync</div>
+                <div class="art-badge"><span>🤖</span> 3 AI Levels</div>
+                <div class="art-badge"><span>🔒</span> Room IDs</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Join Room ID Bar -->
+          <div class="room-id-join-bar">
+            <div class="room-id-join-content">
+              <div style="font-weight:700; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
+                <span>🔗</span> Have a Game ID or Link?
+              </div>
+              <div class="room-id-input-group">
+                <input type="text" class="text-input" id="quickRoomIdInput" placeholder="Enter 6-digit Game ID (e.g. 8F72KQ)" maxlength="12" style="text-transform:uppercase;">
+                <button class="btn-primary-glow" style="padding:0.75rem 1.5rem; font-size:0.9rem;" id="btnQuickJoinRoom">
+                  JOIN GAME
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Time Controls Pool -->
+          <div class="section-header">
+            <h2 class="section-title"><span>⏱️</span> Live Match Pools</h2>
+          </div>
+          <div class="quick-pool-grid">
+            <div class="pool-card" data-tc="1+0">
+              <div class="pool-icon">⚡</div>
+              <div class="pool-time">1 + 0</div>
+              <div class="pool-label">Bullet</div>
+            </div>
+            <div class="pool-card" data-tc="2+1">
+              <div class="pool-icon">⚡</div>
+              <div class="pool-time">2 + 1</div>
+              <div class="pool-label">Bullet</div>
+            </div>
+            <div class="pool-card" data-tc="3+0">
+              <div class="pool-icon">🔥</div>
+              <div class="pool-time">3 + 0</div>
+              <div class="pool-label">Blitz</div>
+            </div>
+            <div class="pool-card" data-tc="3+2">
+              <div class="pool-icon">🔥</div>
+              <div class="pool-time">3 + 2</div>
+              <div class="pool-label">Blitz</div>
+            </div>
+            <div class="pool-card" data-tc="5+0">
+              <div class="pool-icon">🔥</div>
+              <div class="pool-time">5 + 0</div>
+              <div class="pool-label">Blitz</div>
+            </div>
+            <div class="pool-card" data-tc="10+0">
+              <div class="pool-icon">⏳</div>
+              <div class="pool-time">10 + 0</div>
+              <div class="pool-label">Rapid</div>
+            </div>
+            <div class="pool-card" data-tc="15+10">
+              <div class="pool-icon">⏳</div>
+              <div class="pool-time">15 + 10</div>
+              <div class="pool-label">Rapid</div>
+            </div>
+            <div class="pool-card" data-tc="30+0">
+              <div class="pool-icon">👑</div>
+              <div class="pool-time">30 + 0</div>
+              <div class="pool-label">Classical</div>
+            </div>
+          </div>
+
+          <!-- AI Bot Challenges Showcase -->
+          <div class="section-header">
+            <h2 class="section-title"><span>🤖</span> Challenge Neural & Rule AI Bots</h2>
+          </div>
+          <div class="ai-bot-grid">
+            <div class="ai-bot-card easy" onclick="app.startAiGame('easy', '3+2', 'white')">
+              <div class="ai-bot-avatar">🟢</div>
+              <div class="ai-bot-name">Apprentice Bot</div>
+              <div class="ai-bot-rating">Rating: 800 (Easy)</div>
+              <p class="ai-bot-desc">Plays friendly, casual moves with occasional mistakes. Perfect for warming up!</p>
+              <button class="btn-join-sm" style="background:#10b981; width:100%; margin-top:0.75rem;">Play Easy</button>
+            </div>
+
+            <div class="ai-bot-card medium" onclick="app.startAiGame('medium', '5+0', 'white')">
+              <div class="ai-bot-avatar">🟡</div>
+              <div class="ai-bot-name">Tactician Bot</div>
+              <div class="ai-bot-rating">Rating: 1400 (Medium)</div>
+              <p class="ai-bot-desc">Solid positional evaluator that punishes blunders and controls key center files.</p>
+              <button class="btn-join-sm" style="background:#f59e0b; width:100%; margin-top:0.75rem;">Play Medium</button>
+            </div>
+
+            <div class="ai-bot-card hard" onclick="app.startAiGame('hard', '10+0', 'white')">
+              <div class="ai-bot-avatar">🔴</div>
+              <div class="ai-bot-name">Nexus Master AI</div>
+              <div class="ai-bot-rating">Rating: 1950+ (Hard)</div>
+              <p class="ai-bot-desc">Full Minimax with Alpha-Beta pruning, mobility analysis, and king safety.</p>
+              <button class="btn-join-sm" style="background:#ef4444; width:100%; margin-top:0.75rem;">Play Hard</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==========================================
+           2. SHARE GAME & WAITING ROOM VIEW (#waiting)
+           ========================================== -->
+      <section class="view-page" id="viewWaiting">
+        <div class="waiting-room-wrapper">
+          <div class="waiting-badge">
+            <span>●</span> GAME CREATED
+          </div>
+          <h2 class="waiting-room-title">Waiting for opponent...</h2>
+          <p class="waiting-room-subtitle">Send the link or Game ID to invite a player into this live room.</p>
+
+          <div class="game-code-box">
+            <div class="game-code-label">Game ID</div>
+            <div class="game-code-display" id="waitingGameId">8F72KQ</div>
+          </div>
+
+          <div class="form-group" style="text-align: left;">
+            <label class="form-label">Share this link:</label>
+            <div class="share-link-group">
+              <input type="text" class="share-link-input" id="waitingShareLink" readonly value="https://mychessapp.com/game/8F72KQ">
+              <button class="btn-copy-link" id="btnCopyShareLink">
+                <span id="copyIcon">📋</span> <span id="copyBtnText">COPY LINK</span>
+              </button>
+              <button class="btn-secondary-glass" id="btnNativeShare" title="Native Share">
+                📤 SHARE
+              </button>
+            </div>
+          </div>
+
+          <!-- Animated Versus Cards -->
+          <div class="versus-container">
+            <!-- Host Slot -->
+            <div class="player-slot-card">
+              <div class="slot-avatar white-player" id="waitingHostAvatar">♔</div>
+              <div class="slot-name" id="waitingHostName">Player</div>
+              <div class="slot-color-tag" id="waitingHostColor">Your Color: WHITE</div>
+              <span class="slot-status-pill ready">HOST READY</span>
+            </div>
+
+            <div class="versus-divider">VS</div>
+
+            <!-- Opponent Slot -->
+            <div class="player-slot-card">
+              <div class="slot-avatar waiting-pulse" id="waitingOpponentAvatar">⏳</div>
+              <div class="slot-name" id="waitingOpponentName">WAITING...</div>
+              <div class="slot-color-tag" id="waitingOpponentColor">Color: BLACK</div>
+              <span class="slot-status-pill waiting" id="waitingOpponentStatus">Waiting for opponent...</span>
+            </div>
+          </div>
+
+          <div class="waiting-actions">
+            <button class="btn-secondary-glass" id="btnCancelGame">
+              ❌ CANCEL GAME
+            </button>
+            <button class="btn-primary-glow" id="btnWaitingSwitchAi" style="background:linear-gradient(135deg, #06b6d4, #3b82f6); color:#fff; font-size:0.9rem;">
+              🤖 Play Bot Instead
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           3. JOIN GAME PAGE (#/game/:gameId)
+           ========================================== -->
+      <section class="view-page" id="viewJoin">
+        <div class="join-view-wrapper">
+          <div class="waiting-badge" style="background: rgba(99,102,241,0.15); color: #a5b4fc; border-color: rgba(99,102,241,0.3);">
+            <span>♔</span> CHECKMATE NEXUS
+          </div>
+          <h2 class="waiting-room-title">LIVE GAME</h2>
+          <p class="waiting-room-subtitle">You have been invited to a real-time chess room.</p>
+
+          <div class="join-game-preview-card">
+            <div class="preview-row">
+              <span class="preview-label">Game ID</span>
+              <span class="preview-val" id="joinGameIdDisplay" style="color:var(--accent-cyan); font-family:var(--font-mono);">8F72KQ</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-label">Host Player</span>
+              <span class="preview-val" id="joinHostName">Player (1500)</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-label">Time Control</span>
+              <span class="preview-val" id="joinTimeControl">3 + 2 Blitz</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-label">Your Color</span>
+              <span class="preview-val" id="joinAssignedColor">BLACK</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="text-align: left;">
+            <label class="form-label">Playing As (Your Name or Email)</label>
+            <input type="text" class="text-input" id="joinPlayerNameInput" placeholder="Enter your player name or email" required>
+          </div>
+
+          <button class="btn-primary-glow" style="width: 100%; justify-content: center;" id="btnExecuteJoinGame">
+            <span id="joinBtnSpinner" style="display:none;">⏳</span>
+            <span id="joinBtnText">JOIN GAME</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           4. LIVE CHESS ROOM (#room)
+           ========================================== -->
+      <section class="view-page" id="viewRoom">
+        <div class="live-room-container">
+          
+          <!-- Top Room Status Bar -->
+          <div class="room-status-bar">
+            <div class="live-badge-glow">
+              <span class="pulse-circle"></span>
+              <span id="roomLiveStatusText">● LIVE</span>
+              <span style="font-size:0.75rem; color:var(--text-dim); margin-left:8px;" id="roomGameIdBadge">ID: 8F72KQ</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span class="brand-tag" id="roomTimeControlTag">3+2 BLITZ</span>
+            </div>
+          </div>
+
+          <!-- Left Column: Board & Players -->
+          <div class="live-room-layout">
+            
+            <!-- Opponent Strip (Top) -->
+            <div class="player-strip" id="topPlayerStrip">
+              <div class="player-info-left">
+                <div class="player-avatar" id="topPlayerAvatar">♚</div>
+                <div class="player-meta">
+                  <div class="player-name-row">
+                    <span class="player-name" id="topPlayerName">Opponent</span>
+                    <span class="player-rating-badge" id="topPlayerRating">1450</span>
+                  </div>
+                  <div class="captured-pieces-list" id="topCapturedPieces"></div>
+                </div>
+              </div>
+              <div class="chess-clock" id="topPlayerClock">03:00</div>
+            </div>
+
+            <!-- Interactive Chessboard -->
+            <div class="chessboard-wrapper" id="chessboardWrapper">
+              <div class="chessboard-grid" id="chessboardGrid">
+                <!-- 64 Squares dynamically rendered -->
+              </div>
+
+              <!-- Pawn Promotion Picker Modal -->
+              <div class="promotion-modal" id="promotionModal">
+                <div style="font-weight:800; font-size:1.1rem; color:#fff;">Choose Promotion</div>
+                <div class="promotion-choices" id="promotionChoices"></div>
+              </div>
+            </div>
+
+            <!-- Bottom Player Strip (You) -->
+            <div class="player-strip" id="bottomPlayerStrip">
+              <div class="player-info-left">
+                <div class="player-avatar" id="bottomPlayerAvatar" style="background:#fff; color:#111;">♔</div>
+                <div class="player-meta">
+                  <div class="player-name-row">
+                    <span class="player-name" id="bottomPlayerName">Player</span>
+                    <span class="player-rating-badge" id="bottomPlayerRating">1500</span>
+                  </div>
+                  <div class="captured-pieces-list" id="bottomCapturedPieces"></div>
+                </div>
+              </div>
+              <div class="chess-clock" id="bottomPlayerClock">03:00</div>
+            </div>
+
+            <!-- Game Action Controls -->
+            <div class="board-action-bar">
+              <button class="action-control-btn" id="btnOfferDraw" title="Offer a Draw to your opponent">
+                🤝 DRAW
+              </button>
+              <button class="action-control-btn btn-resign" id="btnResign" title="Resign current match">
+                🏳️ RESIGN
+              </button>
+              <button class="action-control-btn" id="btnFlipBoard" title="Flip Board Perspective">
+                🔄 FLIP BOARD
+              </button>
+              <button class="action-control-btn" id="btnBoardSettings" title="Game Settings & Themes">
+                ⚙️ SETTINGS
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Column / Mobile Drawer: Move List & Chat -->
+          <aside class="side-panel" id="sidePanel">
+            <div class="mobile-drawer-handle" id="mobileDrawerHandle"></div>
+            
+            <div class="panel-tabs">
+              <button class="panel-tab-btn active" data-tab="moves" id="tabBtnMoves">
+                <span>♟️</span> Move List
+              </button>
+              <button class="panel-tab-btn" data-tab="chat" id="tabBtnChat">
+                <span>💬</span> Game Chat
+                <span class="chat-badge-count" id="chatUnreadCount" style="display:none;">0</span>
+              </button>
+            </div>
+
+            <!-- Move List Tab Content -->
+            <div class="panel-tab-content active" id="tabContentMoves">
+              <div class="moves-scroll-area">
+                <table class="moves-table">
+                  <tbody id="movesTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Game Chat Tab Content -->
+            <div class="panel-tab-content" id="tabContentChat">
+              <div class="chat-messages-scroll" id="chatMessagesScroll">
+                <div class="chat-bubble system">
+                  Game room created. Live chat active.
+                </div>
+              </div>
+
+              <!-- Quick Chess Emotes -->
+              <div class="quick-emotes-bar">
+                <button class="emote-chip" data-msg="Good luck!">👋 Good luck!</button>
+                <button class="emote-chip" data-msg="Have fun!">🎉 Have fun!</button>
+                <button class="emote-chip" data-msg="Well played!">👏 Well played!</button>
+                <button class="emote-chip" data-msg="Thanks for the game!">🤝 Thanks!</button>
+              </div>
+
+              <!-- Chat Input Bar -->
+              <div class="chat-input-bar">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="180">
+                <button class="btn-chat-send" id="btnChatSend">SEND</button>
+              </div>
+            </div>
+          </aside>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Mobile Floating Action Bar -->
+    <div class="mobile-floating-controls" id="mobileFloatingBar">
+      <button class="action-control-btn" onclick="app.toggleMobilePanel('moves')">♟️ Moves</button>
+      <button class="action-control-btn" onclick="app.toggleMobilePanel('chat')">💬 Chat</button>
+      <button class="action-control-btn" onclick="app.flipBoard()">🔄 Flip</button>
+      <button class="action-control-btn btn-resign" onclick="app.handleResignClick()">🏳️ Resign</button>
+    </div>
+
+    <!-- ==========================================
+         MODAL: MANDATORY INITIAL PLAYER LOGIN / GATE
+         ========================================== -->
+    <div class="modal-backdrop" id="modalPlayerLogin">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>👤</span> Player Login / Enter Name
+          </div>
+          <button class="modal-close-btn" id="btnCloseLoginModal" style="display:none;">✕</button>
+        </div>
+
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">
+          Enter your name or email to start playing. This exact name will be shown to your opponents, on the board, and in live chat.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">YOUR NAME OR EMAIL</label>
+          <input type="text" class="text-input" id="loginNameOrEmailInput" placeholder="e.g. Alex, Vishnu, or player@email.com" autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">STARTING RATING (ELO)</label>
+          <select class="text-input" id="loginRatingSelect">
+            <option value="1200">1200 — Beginner / Casual</option>
+            <option value="1500" selected>1500 — Intermediate</option>
+            <option value="1800">1800 — Advanced</option>
+            <option value="2100">2100 — Master</option>
+          </select>
+        </div>
+
+        <button class="btn-modal-submit" id="btnSavePlayerProfile">
+          LOGIN & ENTER CHESS ARENA
+        </button>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL: PLAY VS AI BOTS
+         ========================================== -->
+    <div class="modal-backdrop" id="modalPlayAi">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title"><span>🤖</span> Play vs AI Bot</div>
+          <button class="modal-close-btn" id="btnClosePlayAiModal">✕</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">BOT DIFFICULTY</label>
+          <div class="time-control-grid">
+            <div class="tc-option-btn active" data-difficulty="easy" id="aiDiffEasy">
+              <span class="tc-time">🟢 EASY</span>
+              <span class="tc-type">800 Elo</span>
+            </div>
+            <div class="tc-option-btn" data-difficulty="medium" id="aiDiffMedium">
+              <span class="tc-time">🟡 MEDIUM</span>
+              <span class="tc-type">1400 Elo</span>
+            </div>
+            <div class="tc-option-btn" data-difficulty="hard" id="aiDiffHard">
+              <span class="tc-time">🔴 HARD</span>
+              <span class="tc-type">1950+ Minimax</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">TIME CONTROL</label>
+          <div class="time-control-grid">
+            <div class="tc-option-btn" data-ai-tc="3+2">
+              <span class="tc-time">3+2</span>
+              <span class="tc-type">Blitz</span>
+            </div>
+            <div class="tc-option-btn active" data-ai-tc="5+0">
+              <span class="tc-time">5+0</span>
+              <span class="tc-type">Blitz</span>
+            </div>
+            <div class="tc-option-btn" data-ai-tc="10+0">
+              <span class="tc-time">10+0</span>
+              <span class="tc-type">Rapid</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">PLAY AS</label>
+          <div class="color-choice-group">
+            <button class="color-choice-btn active" data-ai-color="white">♔ White</button>
+            <button class="color-choice-btn" data-ai-color="random">🎲 Random</button>
+            <button class="color-choice-btn" data-ai-color="black">♚ Black</button>
+          </div>
+        </div>
+
+        <button class="btn-modal-submit" id="btnStartAiMatch" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color:#fff;">
+          START AI GAME
+        </button>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL: CREATE LIVE GAME
+         ========================================== -->
+    <div class="modal-backdrop" id="modalCreateGame">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>⚡</span> CREATE LIVE GAME
+          </div>
+          <button class="modal-close-btn" id="btnCloseCreateModal">✕</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">TIME CONTROL</label>
+          <div class="time-control-grid">
+            <div class="tc-option-btn" data-tc="1+0">
+              <span class="tc-time">1+0</span>
+              <span class="tc-type">Bullet</span>
+            </div>
+            <div class="tc-option-btn" data-tc="2+1">
+              <span class="tc-time">2+1</span>
+              <span class="tc-type">Bullet</span>
+            </div>
+            <div class="tc-option-btn" data-tc="3+0">
+              <span class="tc-time">3+0</span>
+              <span class="tc-type">Blitz</span>
+            </div>
+            <div class="tc-option-btn active" data-tc="3+2">
+              <span class="tc-time">3+2</span>
+              <span class="tc-type">Blitz</span>
+            </div>
+            <div class="tc-option-btn" data-tc="5+0">
+              <span class="tc-time">5+0</span>
+              <span class="tc-type">Blitz</span>
+            </div>
+            <div class="tc-option-btn" data-tc="10+0">
+              <span class="tc-time">10+0</span>
+              <span class="tc-type">Rapid</span>
+            </div>
+            <div class="tc-option-btn" data-tc="10+5">
+              <span class="tc-time">10+5</span>
+              <span class="tc-type">Rapid</span>
+            </div>
+            <div class="tc-option-btn" data-tc="15+10">
+              <span class="tc-time">15+10</span>
+              <span class="tc-type">Rapid</span>
+            </div>
+            <div class="tc-option-btn" data-tc="30+0">
+              <span class="tc-time">30+0</span>
+              <span class="tc-type">Classical</span>
+            </div>
+          </div>
+          <div class="tc-option-btn" style="width:100%; margin-top:0.4rem;" data-tc="custom" id="tcCustomBtn">
+            <span class="tc-time">CUSTOM</span>
+            <span class="tc-type">Set Base Minutes & Increment Seconds</span>
+          </div>
+          <div class="custom-tc-inputs" id="customTcInputs">
+            <input type="number" class="text-input" id="customBaseMinutes" placeholder="Minutes (e.g. 7)" min="1" max="180" value="7">
+            <input type="number" class="text-input" id="customIncrementSec" placeholder="Increment (e.g. 3)" min="0" max="60" value="3">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">GAME TYPE</label>
+          <div class="game-type-toggle-group">
+            <button class="game-type-btn active" data-type="private" id="btnTypePrivate">
+              <span>🔒</span> Private Link
+            </button>
+            <button class="game-type-btn" data-type="public" id="btnTypePublic">
+              <span>🌐</span> Public
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">PREFERRED COLOR</label>
+          <div class="color-choice-group">
+            <button class="color-choice-btn active" data-color="white">♔ White</button>
+            <button class="color-choice-btn" data-color="random">🎲 Random</button>
+            <button class="color-choice-btn" data-color="black">♚ Black</button>
+          </div>
+        </div>
+
+        <button class="btn-modal-submit" id="btnSubmitCreateGame">
+          CREATE GAME
+        </button>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL: GAME END & RESULTS
+         ========================================== -->
+    <div class="modal-backdrop" id="modalGameEnd">
+      <div class="modal-card game-end-modal-card">
+        <div class="game-end-icon" id="gameEndIcon">♔</div>
+        <div class="game-end-status win" id="gameEndStatus">CHECKMATE</div>
+        <div style="font-size:1.3rem; font-weight:800; margin-bottom:0.5rem;" id="gameEndSubTitle">YOU WIN</div>
+        <div class="game-end-reason" id="gameEndReason">White wins by checkmate</div>
+
+        <div class="elo-delta-card">
+          <span style="font-size:0.85rem; color:var(--text-muted);">Rating Update:</span>
+          <span class="elo-val plus" id="gameEndElo">+18 Rating</span>
+        </div>
+
+        <div class="game-end-actions">
+          <button class="btn-primary-glow" style="width:100%; justify-content:center;" id="btnModalRematch">
+            <span>🔄</span> REMATCH
+          </button>
+          <button class="btn-secondary-glass" style="width:100%; justify-content:center;" id="btnModalAnalyze">
+            <span>🔍</span> ANALYZE GAME
+          </button>
+          <button class="btn-secondary-glass" style="width:100%; justify-content:center;" id="btnModalNewGame">
+            <span>⚡</span> NEW GAME
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL: SETTINGS & THEMES
+         ========================================== -->
+    <div class="modal-backdrop" id="modalSettings">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title"><span>⚙️</span> Game Settings</div>
+          <button class="modal-close-btn" id="btnCloseSettingsModal">✕</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">BOARD THEME</label>
+          <select class="text-input" id="boardThemeSelector">
+            <option value="neo-wood">Neo Wood (Classic Grandmaster)</option>
+            <option value="cyber-neon">Cyber Neon (Dark High-Tech)</option>
+            <option value="obsidian-gold">Obsidian Gold (Luxury Championship)</option>
+            <option value="slate-glass">Slate Glass (Modern Tournament)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">BACKEND SERVER URL (SOCKET.IO & REST)</label>
+          <input type="text" class="text-input" id="serverUrlInput" placeholder="http://localhost:4000">
+          <p style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">
+            Default: auto-detects current host or http://localhost:4000. Multi-tab peer sync is always active.
+          </p>
+        </div>
+
+        <button class="btn-modal-submit" id="btnSaveSettings">SAVE SETTINGS</button>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="game-toast-container" id="toastContainer"></div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="chess-engine.js"></script>
+  <script src="sound-fx.js"></script>
+  <script src="network.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
